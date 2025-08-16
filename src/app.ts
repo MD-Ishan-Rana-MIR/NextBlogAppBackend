@@ -1,0 +1,35 @@
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import { config } from './config/config';
+
+const app = express();
+app.use(cors());
+app.use(express.json()); // <-- parses application/json
+app.use(express.urlencoded({ extended: true })); // <-- parses form-urlencoded   
+
+
+// Connect to MongoDB
+
+mongoose.connect(config.dbUrl).then(() => {
+    console.log('Connected to MongoDB');
+
+}).catch((error) => {
+    console.error('MongoDB connection error:', error);
+});
+
+
+// Import and use the auth router
+import { authRouter } from './module/auth/authApi';
+app.use('/api/auth', authRouter);
+
+
+
+app.get('/', (req, res) => {
+    res.send('Welcome to the NextBlogApp Backend!');
+});
+
+
+
+
+export default app;
