@@ -1,13 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
 import { config } from './config/config';
 
 const app = express();
 app.use(cors());
 app.use(express.json()); // <-- parses application/json
 app.use(express.urlencoded({ extended: true })); // <-- parses form-urlencoded   
-
+app.use(cookieParser());
 
 // Connect to MongoDB
 

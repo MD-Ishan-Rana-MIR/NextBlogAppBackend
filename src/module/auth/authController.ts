@@ -115,7 +115,7 @@ export const userLogin = async (req: Request, res: Response) => {
         return res.status(200).json({
             status: "success",
             msg: "Login successful",
-            token : token,
+            token: token,
             data: {
                 id: user._id,
                 email: user.email,
@@ -161,5 +161,39 @@ export const userProfile = async (req: Request, res: Response) => {
             msg: "Something went wrong while retrieving user profile",
         });
 
+    }
+};
+
+
+
+
+export const userLogout = async (req: Request, res: Response) => {
+    try {
+        // ✅ Check if token cookie exists
+        const token = req.cookies?.token;
+        if (!token) {
+            return res.status(400).json({
+                status: "fail",
+                msg: "User already logged out",
+            });
+        }
+
+        // ✅ Clear the token cookie
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+
+        return res.status(200).json({
+            status: "success",
+            msg: "Logout successful",
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
+        return res.status(500).json({
+            status: "error",
+            msg: "Something went wrong during logout",
+        });
     }
 };
