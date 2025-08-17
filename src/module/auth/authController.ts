@@ -89,14 +89,13 @@ export const userLogin = async (req: Request, res: Response) => {
 
         // Update last login & device name
         user.lastLogin = new Date().toISOString();
-        (user as any).loginDeviceName = clientDevice; // make sure field exists in schema
+        (user as any).loginDeviceName = clientDevice; // ensure field exists in schema
         await user.save();
 
         // Create JWT token
         const payload = {
             id: user._id,
             email: user.email,
-            name: user.name,
             role: user.role,
         };
 
@@ -104,11 +103,19 @@ export const userLogin = async (req: Request, res: Response) => {
             expiresIn: "1d", // token valid for 1 day
         });
 
+        // ✅ Set token in cookie
+        res.cookie("token", token, {
+            httpOnly: true, // prevent JS access
+            secure: process.env.NODE_ENV === "production", // only https in prod
+            sameSite: "strict", // CSRF protection
+            maxAge: 24 * 60 * 60 * 1000, // 1 day
+        });
+
         // Send response
         return res.status(200).json({
             status: "success",
             msg: "Login successful",
-            token, // include JWT token
+            token : token,
             data: {
                 id: user._id,
                 email: user.email,
@@ -124,5 +131,35 @@ export const userLogin = async (req: Request, res: Response) => {
             status: "error",
             msg: "Something went wrong during login",
         });
+    }
+};
+
+
+
+export const userProfile = async (req: Request, res: Response) => {
+    const userId = req.headers.id;
+    try {
+        const filter = {
+            _id: userId,
+        }
+        const user = await AuthModel.findOne(filter).select("-password");
+        if (!user) {
+            return res.status(404).json({
+                status: "fail",
+                msg: "User not found",
+            });
+        }
+        return res.status(200).json({
+            status: "success",
+            msg: "User profile retrieved successfully",
+            data: user,
+        });
+    } catch (error) {
+        console.error("Error retrieving user profile:", error);
+        return res.status(500).json({
+            status: "error",
+            msg: "Something went wrong while retrieving user profile",
+        });
+
     }
 };
