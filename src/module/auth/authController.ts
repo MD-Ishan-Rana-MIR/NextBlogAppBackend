@@ -42,6 +42,8 @@ export const userRegistration = async (req: Request, res: Response) => {
                 id: newUser._id,
                 email: newUser.email,
                 name: newUser.name,
+                createdAt: newUser.createdAt,
+                updatedAt: newUser.updatedAt,
             },
         });
     } catch (error) {

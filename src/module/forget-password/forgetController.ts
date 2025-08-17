@@ -3,6 +3,9 @@ import SendEmailUtility from "../../config/email";
 import OtpModel from "./otpModel";
 import AuthModel from "../auth/authModel";
 import bcrypt from "bcrypt";
+
+
+
 export const sendOtp = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
@@ -39,7 +42,6 @@ export const sendOtp = async (req: Request, res: Response) => {
         return res.status(500).json({ status: "error", msg: "Failed to send OTP" });
     }
 };
-
 
 
 export const verifyOtp = async (req: Request, res: Response) => {
@@ -94,7 +96,7 @@ export const resetPassword = async (req: Request, res: Response) => {
         const { email, password } = req.body;
 
 
-        if (!email || !password) {
+        if (!password) {
             return res.status(400).json({ status: "fail", msg: "Email and new password are required" });
         }
 
