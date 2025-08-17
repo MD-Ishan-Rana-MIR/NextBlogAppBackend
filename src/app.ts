@@ -23,6 +23,9 @@ mongoose.connect(config.dbUrl).then(() => {
 // Import and use the auth router
 import { authRouter } from './module/auth/authApi';
 app.use('/api/auth', authRouter);
+// Import and use the forget password router
+import { forgetRouter } from './module/forget-password/forgetApi';
+app.use('/api/forget', forgetRouter);
 
 
 
