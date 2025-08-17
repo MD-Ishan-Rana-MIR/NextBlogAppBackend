@@ -3,7 +3,9 @@ import AuthModel from "./authModel";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import LoginModel from "./loginModel";
 dotenv.config();
+
 export const userRegistration = async (req: Request, res: Response) => {
     console.log("User registration request received:", req);
     const { email, password, name } = req.body;
@@ -57,7 +59,7 @@ export const userRegistration = async (req: Request, res: Response) => {
 
 
 export const userLogin = async (req: Request, res: Response) => {
-    const { email, password, deviceName } = req.body;
+    const { email, password, deviceName, deviceType, location } = req.body;
 
     try {
         if (!email || !password) {
@@ -85,14 +87,41 @@ export const userLogin = async (req: Request, res: Response) => {
             });
         }
 
-        // Get device name either from request body or headers
-        const clientDevice =
+        // Device & location info
+        const clientDeviceName =
             deviceName || req.headers["user-agent"] || "Unknown Device";
+        const clientDeviceType = deviceType || "Unknown Type";
 
-        // Update last login & device name
-        user.lastLogin = new Date().toISOString();
-        (user as any).loginDeviceName = clientDevice; // ensure field exists in schema
+        const clientLocation = {
+            ip: location?.ip || req.ip || "Unknown IP",
+            country: location?.country || "Unknown Country",
+            city: location?.city || "Unknown City",
+        };
+
+
+
         await user.save();
+
+        // ✅ Save login history in LoginModel
+        await LoginModel.create({
+            userId: user._id,
+            name: user.name,
+            email: user.email,
+            deviceName: clientDeviceName,
+            deviceType: clientDeviceType,
+            location: clientLocation,
+            loginTime: new Date(),
+        });
+
+        const activeLogins = await LoginModel.find({ userId: user._id });
+
+        if (activeLogins.length > 2) {
+            // Already logged in from 2 devices → block new login
+            return res.status(403).json({
+                status: "fail",
+                msg: "You can only be logged in on 2 devices at the same time.",
+            });
+        }
 
         // Create JWT token
         const payload = {
@@ -102,16 +131,18 @@ export const userLogin = async (req: Request, res: Response) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET!, {
-            expiresIn: "1d", // token valid for 1 day
+            expiresIn: "1d",
         });
 
         // ✅ Set token in cookie
         res.cookie("token", token, {
-            httpOnly: true, // prevent JS access
-            secure: process.env.NODE_ENV === "production", // only https in prod
-            sameSite: "strict", // CSRF protection
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
             maxAge: 24 * 60 * 60 * 1000, // 1 day
         });
+
+
 
         // Send response
         return res.status(200).json({
@@ -124,7 +155,9 @@ export const userLogin = async (req: Request, res: Response) => {
                 name: user.name,
                 role: user.role,
                 lastLogin: user.lastLogin,
-                loginDeviceName: clientDevice,
+                deviceName: clientDeviceName,
+                deviceType: clientDeviceType,
+                location: clientLocation,
             },
         });
     } catch (error) {
@@ -135,8 +168,6 @@ export const userLogin = async (req: Request, res: Response) => {
         });
     }
 };
-
-
 
 export const userProfile = async (req: Request, res: Response) => {
     const userId = req.headers.id;
@@ -167,8 +198,6 @@ export const userProfile = async (req: Request, res: Response) => {
 };
 
 
-
-
 export const userLogout = async (req: Request, res: Response) => {
     try {
         // ✅ Check if token cookie exists
@@ -196,6 +225,36 @@ export const userLogout = async (req: Request, res: Response) => {
         return res.status(500).json({
             status: "error",
             msg: "Something went wrong during logout",
+        });
+    }
+};
+
+
+export const userProfileUpdate = async (req: Request, res: Response) => {
+    const userId = req.headers.id as string;
+    const { name } = req.body;
+
+    try {
+
+
+        const filter = { _id: userId };
+
+        const updatedUser = await AuthModel.findOneAndUpdate(
+            filter,
+            { name: name },
+            { new: true } // return updated document
+        );
+
+        return res.status(200).json({
+            status: "success",
+            msg: "Profile updated successfully",
+            data: updatedUser,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: "error",
+            msg: "Something went wrong",
+            error: error instanceof Error ? error.message : error,
         });
     }
 };
